@@ -12,7 +12,7 @@ var overlay_orientation = "--overlay_orientation";
 var overlay_background_color = "--overlay_background_color";
 var overlay_text_color = "--overlay_text_color";
 var overlay_border_color = "--overlay_border_color";
-var overlay_anchor_hv = "--overlay_anchor";
+var overlay_anchor_hv = "--overlay_anchor_hv";
 var overlay_show_dot = "--overlay_show_dot";
 var overlay_show_icon = "--overlay_show_icon";
 var overlay_offset = "--overlay_offset";
@@ -72,7 +72,7 @@ function createOverrideDom(){
     var btn = document.createElement("BUTTON");        // Create a <button> element
     btn.id = "wearHF_root_button";
 
-    var t = document.createTextNode("wearhf_override:" + generateXML());       // Create a text node
+    var t = document.createTextNode("hf_wearml_override:" + generateXML());       // Create a text node
     btn.appendChild(t);                                // Append the text to <button>
     btn.style.top = 0;
     btn.style.left = 0;
@@ -120,12 +120,15 @@ function generateXML(){
 *   Finding style based on class name and returns style
 **/
 function getStyle(className) {
-    var classes = document.styleSheets[0].rules || document.styleSheets[0].cssRules
-    for(var x=0;x<classes.length;x++) {
-        if(classes[x].selectorText==className) {
-            return classes[x].style;
-        }
-    }
+    for(var i = 0; i < document.styleSheets.length; i++){
+            var classes = document.styleSheets[i].rules || document.styleSheets[i].cssRules
+            if(classes != null)
+                for(var x=0;x<classes.length;x++) {
+                    if(classes[x].selectorText==className) {
+                        return classes[x].style;
+                    }
+                }
+     }
 }
 
 /**
