@@ -1,9 +1,29 @@
+/*------------------- COPYRIGHT AND TRADEMARK INFORMATION -------------------+
+ |
+ |    RealWear Development Software, Source Code and Object Code
+ |    (c) RealWear, Inc. All rights reserved.
+ |
+ |    Contact info@realwear.com for further information about the use of
+ |    this code.
+ |
+ +---------------------------------------------------------------------------*/
 
-$(window).load(function(){ getCommands(); })
+
+/*----------------------- SOURCE MODULE INFORMATION -------------------------+
+ |
+ | Source Name:  WearML Engine
+ | Version: v0.8
+ | Date: July 2017
+ | Author: Luke Hopkins
+ |
+ +---------------------------------------------------------------------------*/
+ 
+window.addEventListener("load", function() { getCommands(); }, false);
 
 var wearMLElements = [];
 
 //CONST
+var root = "--root";
 var text_field = "--text_field";
 var overlay_show_number = "--overlay_show_number";
 var overlay_show_text = "--overlay_show_text";
@@ -21,6 +41,20 @@ var barcode = "--hf_barcode";
 var global = "--global_commands";
 var broadcast_results = "--broadcast_results";
 
+var root_text_field = "";
+var root_overlay_show_number = "";
+var root_overlay_show_text = "";
+var root_overlay_persists = "";
+var root_overlay_orientation = "";
+var root_overlay_background_color = "";
+var root_overlay_text_color = "";
+var root_overlay_border_color = "";
+var root_overlay_anchor_hv = "";
+var root_overlay_show_dot = "";
+var root_overlay_show_icon = "";
+var root_overlay_offset = "";
+var root_hf_scroll = "";
+
 function getCommands() {
    var elements = getAllElementsWithAttribute('*');
    createOverrideDom();
@@ -35,7 +69,7 @@ function getAllElementsWithAttribute(attribute)
   for (var i = 0, n = allElements.length; i < n; i++)
   {
     //Check element to see if it has atleast one of our tags
-    if (allElements[i].getAttribute('data-wml-style') !== null || allElements[i].getAttribute('data-wml-speech')  !== null  )
+    if (allElements[i].getAttribute('data-wml-style') !== null || allElements[i].getAttribute('data-wml-speech') !== null || allElements[i].tagName != "DIV")
     {
         var styleId = allElements[i].getAttribute('data-wml-style');
         var command = allElements[i].text;
@@ -76,8 +110,8 @@ function createOverrideDom(){
     btn.appendChild(t);                                // Append the text to <button>
     btn.style.top = 0;
     btn.style.left = 0;
-    btn.style.position = "absolute";
-    btn.style.opacity  = "0.0";
+    btn.style.opacity  = "0.01";
+    btn.style.position = "fixed";
     // Get a reference to the first child
     var theFirstChild = document.body.firstChild;
    // document.body.appendChild(btn);
@@ -89,7 +123,7 @@ function createOverrideDom(){
 *  Create xml for web page.
 **/
 function generateXML(){
-  var xml = "<WearML><Package>com.android.webview</Package><Language>en_UK</Language><UniqueIdentifier id=\"web_app\"/> ";
+  var xml = "<WearML><Package>com.android.webview</Package><Language>en_GB</Language><UniqueIdentifier id=\"web_app\"/> ";
 
   for (var i = 0, n = wearMLElements.length; i < n; i++)
   {
@@ -100,14 +134,11 @@ function generateXML(){
 
       var style = getStyle(styleId)
 
-      if(style != null)
-          xml += wearMLParser(style, wearMLElements[i]);
+      xml += wearMLParser(style, wearMLElements[i]);
 
       if(command != undefined){
        xml += "speech_command=\""+ command + "\" ";
       }
-
-      xml += "xy=\"" + wearMLElements[i].x + "," + wearMLElements[i].y + "\"";
 
       xml += "/> ";
   }
@@ -163,22 +194,47 @@ function wearMLParser(e, element) {
 
    var attributes = "";
 
-   var get_text_field = e.getPropertyValue(text_field).trim();
-   var get_overlay_show_number = e.getPropertyValue(overlay_show_number).trim();
-   var get_overlay_show_text = e.getPropertyValue(overlay_show_text).trim();
-   var get_overlay_persists = e.getPropertyValue(overlay_persists).trim();
-   var get_overlay_orientation = e.getPropertyValue(overlay_orientation).trim();
-   var get_overlay_background_color = e.getPropertyValue(overlay_background_color).trim();
-   var get_overlay_text_color = e.getPropertyValue(overlay_text_color).trim();
-   var get_overlay_border_color = e.getPropertyValue(overlay_border_color).trim();
-   var get_overlay_anchor_hv = e.getPropertyValue(overlay_anchor_hv).trim();
-   var get_overlay_show_dot = e.getPropertyValue(overlay_show_dot).trim();
-   var get_overlay_show_icon = e.getPropertyValue(overlay_show_icon).trim();
-   var get_overlay_offset = e.getPropertyValue(overlay_offset).trim();
-   var get_hf_scroll = e.getPropertyValue(hf_scroll).trim();
-   var get_barcode = e.getPropertyValue(barcode).trim();
-   var get_global = e.getPropertyValue(global).trim();
-   var get_broadcast_results = e.getPropertyValue(broadcast_results).trim();
+    /**
+    * If we cant find a value and we have a root value use this....
+    */
+   var get_root = e != undefined ? e.getPropertyValue(root).trim() : "";
+   var get_text_field = e != undefined ? e.getPropertyValue(text_field).trim() : root_text_field;
+   var get_overlay_show_number =  e != undefined ? e.getPropertyValue(overlay_show_number).trim() : root_overlay_show_number;
+   var get_overlay_show_text = e != undefined ? e.getPropertyValue(overlay_show_text).trim() : root_overlay_show_text;
+   var get_overlay_persists = e != undefined ? e.getPropertyValue(overlay_persists).trim() : root_overlay_persists;
+   var get_overlay_orientation = e != undefined ? e.getPropertyValue(overlay_orientation).trim() : root_overlay_orientation;
+   var get_overlay_background_color = e != undefined ? e.getPropertyValue(overlay_background_color).trim() : root_overlay_background_color;
+   var get_overlay_text_color = e != undefined ? e.getPropertyValue(overlay_text_color).trim() : root_overlay_text_color;
+   var get_overlay_border_color = e != undefined ? e.getPropertyValue(overlay_border_color).trim() : root_overlay_border_color;
+   var get_overlay_anchor_hv = e != undefined ? e.getPropertyValue(overlay_anchor_hv).trim() : root_overlay_anchor_hv;
+   var get_overlay_show_dot = e != undefined ? e.getPropertyValue(overlay_show_dot).trim() : root_overlay_show_dot;
+   var get_overlay_show_icon = e != undefined ? e.getPropertyValue(overlay_show_icon).trim() : root_overlay_show_icon;
+   var get_overlay_offset = e != undefined ? e.getPropertyValue(overlay_offset).trim() : root_overlay_offset;
+   var get_hf_scroll = e != undefined ? e.getPropertyValue(hf_scroll).trim() : root_hf_scroll;
+   var get_barcode = e != undefined ? e.getPropertyValue(barcode).trim() : "";
+   var get_global = e != undefined ? e.getPropertyValue(global).trim() : "";
+   var get_broadcast_results = e != undefined ? e.getPropertyValue(broadcast_results).trim() : "";
+
+   /**
+       Input type
+   ***/
+   if(get_root != ""){
+              if(get_root == "true"){
+                   root_text_field = get_text_field;
+                   root_overlay_show_number = get_overlay_show_number;
+                   root_overlay_show_text = get_overlay_show_text;
+                   root_overlay_persists = get_overlay_persists;
+                   root_overlay_orientation = get_overlay_orientation;
+                   root_overlay_background_color = get_overlay_background_color;
+                   root_overlay_text_color = get_overlay_text_color;
+                   root_overlay_border_color = get_overlay_border_color;
+                   root_overlay_anchor_hv = get_overlay_anchor_hv;
+                   root_overlay_show_dot = get_overlay_show_dot;
+                   root_overlay_show_icon = get_overlay_show_icon;
+                   root_overlay_offset = get_overlay_offset;
+                   root_hf_scroll = get_hf_scroll;
+              }
+   }
 
    /**
        Input type
@@ -191,18 +247,20 @@ function wearMLParser(e, element) {
         Show Number
     ***/
     if(get_overlay_show_number != ""){
-        if(get_overlay_show_number)
+        if(get_overlay_show_number == "true"){
             attributes += "overlay_show_number=\"yes\" ";
+         }
         else{
             attributes += "overlay_show_number=\"no\" ";
         }
     }
 
+
     /**
         Show Text
     **/
     if(get_overlay_show_text != ""){
-        if(get_overlay_show_text)
+        if(get_overlay_show_text == "true")
             attributes += "overlay_show_text=\"yes\" ";
         else{
             attributes += "overlay_show_text=\"no\" ";
@@ -214,7 +272,7 @@ function wearMLParser(e, element) {
         Show Overlay
     **/
     if(get_overlay_persists != ""){
-        if(get_overlay_persists)
+        if(get_overlay_persists == "true")
             attributes += "overlay_persists=\"yes\" ";
         else{
             attributes += "overlay_persists=\"no\" ";
@@ -262,19 +320,20 @@ function wearMLParser(e, element) {
         Overlay show dot
     **/
    if(get_overlay_show_dot != ""){
-       if(get_overlay_show_dot)
+       if(get_overlay_show_dot == "true")
               attributes += "overlay_show_dot=\"yes\" ";
           else{
               attributes += "overlay_show_dot=\"no\" ";
        }
     }
 
+console.log(attributes);
 
     /**
         Overlay show icon
     **/
    if(get_overlay_show_icon != ""){
-       if(get_overlay_show_icon)
+       if(get_overlay_show_icon == "true")
               attributes += "overlay_show_icon=\"yes\" ";
           else{
               attributes += "overlay_show_icon=\"no\" ";
@@ -292,7 +351,7 @@ function wearMLParser(e, element) {
         HF Scroll
     **/
    if(get_hf_scroll != ""){
-       attributes += "hf_scroll="+ get_hf_scroll + " ";
+       attributes += "scroll="+ get_hf_scroll + " ";
     }
 
     /**
@@ -307,7 +366,7 @@ function wearMLParser(e, element) {
         Global Commands
     **/
    if(get_global != ""){
-          if(get_global)
+          if(get_global == "true")
                attributes += "global_commands=\"yes\" ";
              else{
                  attributes += "global_commands=\"no\" ";
@@ -318,7 +377,7 @@ function wearMLParser(e, element) {
         BroadCast Commands
     **/
    if(get_broadcast_results != ""){
-          if(get_broadcast_results)
+          if(get_broadcast_results == "true")
                attributes += "broadcast_results=\"yes\" ";
              else{
                  attributes += "broadcast_results=\"no\" ";
