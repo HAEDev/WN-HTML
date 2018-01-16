@@ -1,137 +1,331 @@
+/*------------------- COPYRIGHT AND TRADEMARK INFORMATION -------------------+
+ |
+ |    RealWear Development Software, Source Code and Object Code
+ |    (c) RealWear, Inc. All rights reserved.
+ |
+ |    Contact info@realwear.com for further information about the use of
+ |    this code.
+ |
+ +---------------------------------------------------------------------------*/
 
-$(window).load(function(){ getCommands(); })
 
-var wearMLElements = [];
+/*----------------------- SOURCE MODULE INFORMATION -------------------------+
+ |
+ | Source Name:  WearML Engine
+ | Version: v0.9.3
+ | Date: December 2017
+ | Author: Luke Hopkins
+ |
+ +---------------------------------------------------------------------------*/
+
+var wearML = new function(){
+
+this.voiceCommandsCallBack;
+
+this.config = {
+  attributes: false,
+  childList: true,
+  subtree: true,
+  characterData: false
+};
+
+this.observer = new MutationObserver(function(mutations) {
+
+   mutations.forEach(function(mutation) {
+      this.removedNodes = Array.from(mutation.removedNodes);
+      this.addedNodes = Array.from(mutation.addedNodes);
+      //console.log(mutation.type);
+        // Content has changed
+        if(this.removedNodes.length > 0 || this.addedNodes.length > 0){
+            wearML.pollCommands();
+        }
+    });
+
+});
+
+
+
+window.addEventListener("load", function() { wearML.getCommands(); }, false);
+//window.addEventListener("change", function() { getCommands(); }, false);
+this.wearMLElements = [];
+this.wearHFButtons = [];
 
 //CONST
-var text_field = "--text_field";
-var overlay_show_number = "--overlay_show_number";
-var overlay_show_text = "--overlay_show_text";
-var overlay_persists = "--overlay_persists";
-var overlay_orientation = "--overlay_orientation";
-var overlay_background_color = "--overlay_background_color";
-var overlay_text_color = "--overlay_text_color";
-var overlay_border_color = "--overlay_border_color";
-var overlay_anchor_hv = "--overlay_anchor";
-var overlay_show_dot = "--overlay_show_dot";
-var overlay_show_icon = "--overlay_show_icon";
-var overlay_offset = "--overlay_offset";
-var hf_scroll = "--hf_scroll";
-var barcode = "--hf_barcode";
-var global = "--global_commands";
-var broadcast_results = "--broadcast_results";
+this.root = "--root";
+this.text_field = "--text_field";
+this.overlay_show_number = "--overlay_show_number";
+this.overlay_show_text = "--overlay_show_text";
+this.overlay_persists = "--overlay_persists";
+this.overlay_orientation = "--overlay_orientation";
+this.overlay_background_color = "--overlay_background_color";
+this.overlay_text_color = "--overlay_text_color";
+this.overlay_border_color = "--overlay_border_color";
+this.overlay_anchor_hv = "--overlay_anchor_hv";
+this.overlay_show_dot = "--overlay_show_dot";
+this.overlay_show_icon = "--overlay_show_icon";
+this.overlay_offset = "--overlay_offset";
+this.hf_scroll = "--hf_scroll";
+this.barcode = "--hf_barcode";
+this.global = "--global_commands";
+this.hide_help = "--hide_help";
+this.broadcast_results = "--broadcast_results";
 
-function getCommands() {
-   var elements = getAllElementsWithAttribute('*');
-   createOverrideDom();
-}
+this.root_text_field = "";
+this.root_overlay_show_number = "";
+this.root_overlay_show_text = "";
+this.root_overlay_persists = "";
+this.root_overlay_orientation = "";
+this.root_overlay_background_color = "";
+this.root_overlay_text_color = "";
+this.root_overlay_border_color = "";
+this.root_overlay_anchor_hv = "";
+this.root_overlay_show_dot = "";
+this.root_overlay_show_icon = "";
+this.root_overlay_offset = "";
+this.root_hf_scroll = "";
+this.root_hide_help = "";
+
+this.getCommands = function() {
+
+    // Checking to see if we are a HMT
+   if(!navigator.userAgent.match(/Android/i) && screen.width > 480 && screen.height > 854){
+       return;
+   }
+
+   //console.log("This is a HMT Device");
+   wearML.observer.disconnect();
+   this.elements = wearML.getAllElementsWithAttribute('*');
+   wearML.createOverrideDom();
+   this.rootElement = document.documentElement;
+   wearML.observer.observe(this.rootElement, wearML.config);
+   //createRootDom();
+};
+
+this.ASRPolling;
 
 /**
 *  Get all elements based on attribute passed
 **/
-function getAllElementsWithAttribute(attribute)
+this.getAllElementsWithAttribute = function(attribute)
 {
-  var allElements = document.body.getElementsByTagName(attribute);
-  for (var i = 0, n = allElements.length; i < n; i++)
+//Clear up buttons
+  for(var i = 0; i < wearML.wearHFButtons.length; i++){
+        document.body.removeChild(wearML.wearHFButtons[i]);
+  }
+  wearML.wearHFButtons = [];
+  this.allElements = document.body.getElementsByTagName(attribute);
+
+  for (var i = 0, n = this.allElements.length; i < n; i++)
   {
     //Check element to see if it has atleast one of our tags
-    if (allElements[i].getAttribute('data-wml-style') !== null || allElements[i].getAttribute('data-wml-speech')  !== null  )
+    this.currentElement = this.allElements[i];
+
+    if (this.currentElement.getAttribute('data-wml-style') !== null || this.currentElement.getAttribute('data-wml-speech-command') !== null || this.currentElement.tagName != "DIV")
     {
-        var styleId = allElements[i].getAttribute('data-wml-style');
-        var command = allElements[i].text;
+        if(this.currentElement.tagName == "SCRIPT")
+            return;
+        //console.log(allElements[i].tagName);
+        this.styleId = this.currentElement.getAttribute('data-wml-style');
+        this.command = this.currentElement.text;
 
-        var speech_command = allElements[i].getAttribute('data-wml-speech-command');
+        this.speech_command = this.currentElement.getAttribute('data-wml-speech-command');
 
-        if(speech_command !== null){
-            command = speech_command;
+        if(this.speech_command == undefined || this.speech_command == " " || this.speech_command == ""){
+
+        }else {
+            this.command = this.speech_command;
+
+
+        if(this.currentElement.id === ""){
+            this.currentElement.id = guid();
         }
 
-        if(allElements[i].id === ""){
-            allElements[i].id = guid();
-        }
+        this.position = this.getPosition(this.currentElement);
 
-        var position = getPosition(allElements[i]);
-        var element = {tag: command, id: allElements[i].id,x: position.x, y: position.y, styleId: styleId };
-      // Element exists with attribute. Add to array.
-        wearMLElements.push(element);
+        this.element = {tag: this.command, id: this.currentElement.id,x: this.position.x, y: this.position.y, styleId: this.styleId };
+
+         // Element exists with attribute. Add to array.
+         wearML.wearMLElements.push(this.element);
+         this.currentElement.addEventListener("click",  this.onReceivedCommand.bind(this.currentElement, this.command));// Create a text node
+
+         if(this.voiceCommandsCallBack != undefined)
+          this.currentElement.addEventListener("click",  this.voiceCommandsCallBack.bind(this.currentElement, this.command));// Create a text node
+
+         this.createButton(this.element, this.currentElement);
+        }
     }
   }
-  return wearMLElements;
-}
+  return wearML.wearMLElements;
+};
+
+
+this.onReceivedCommand = function(command){
+//hello
+//console.log(command + " Clicked");
+wearML.pollCommands();
+
+};
+
+/**
+Sets a second time from the point a reload is called.
+This is to stop a the function reload commands from being called to many times
+**/
+this.pollCommands = function(){
+       if(wearML.ASRPolling != undefined){
+            clearTimeout(wearML.ASRPolling);
+            this.ASRPolling = null;
+        }
+
+        wearML.ASRPolling = setTimeout(wearML.getCommands, 1000);
+};
+
 
 /**
 *   Creates a DOM element to contain all the custom xml
 **/
-function createOverrideDom(){
+this.createOverrideDom = function(){
 
-    var btn = document.getElementById("wearHF_root_button")
+    this.btn = document.getElementById("wearHF_root_button")
 
-    if(btn != undefined)
-        document.body.removeChild(btn);
+    if(this.btn != undefined)
+        document.body.removeChild(this.btn);
     // Lets make sure its not already made
-    var btn = document.createElement("BUTTON");        // Create a <button> element
-    btn.id = "wearHF_root_button";
+    this.btn = document.createElement("BUTTON");        // Create a <button> element
+    this.btn.id = "wearHF_root_button";
 
-    var t = document.createTextNode("wearhf_override:" + generateXML());       // Create a text node
-    btn.appendChild(t);                                // Append the text to <button>
-    btn.style.top = 0;
-    btn.style.left = 0;
-    btn.style.position = "absolute";
-    btn.style.opacity  = "0.0";
+    this.t = document.createTextNode("hf_wearml_override:" + this.generateXML());       // Create a text node
+    this.btn.appendChild(this.t);                                // Append the text to <button>
+    this.btn.style.top = 0;
+    this.btn.style.left = 0;
+    this.btn.style.opacity  = "0.01";
+    this.btn.style.position = "fixed";
+    // Get a reference to the first child
+    this.theFirstChild = document.body.firstChild;
+   // document.body.appendChild(btn);
+   document.body.insertBefore(this.btn, this.theFirstChild);
+};
+
+
+this.createButton = function(element, node){
+
+    this.btn = document.getElementById( element.tag + "WML_NODE");
+
+    if(this.btn != undefined)
+        document.body.removeChild(this.btn);
+
+    this.btn = document.createElement("BUTTON");        // Create a <button> element
+    this.btn.id = element.tag + "WML_NODE";
+
+    this.t = document.createTextNode(element.tag);       // Create a text node
+    this.btn.style.fontSize = "0.01px";
+    this.btn.appendChild(this.t);                                // Append the text to <button>
+    this.btn.style.top = node.getBoundingClientRect().top;
+    this.btn.style.left = node.getBoundingClientRect().left;
+    this.btn.onclick = function(element){
+        for (var i = 0, n = wearML.wearMLElements.length; i < n; i++)
+        {
+            if (element.srcElement.textContent === wearML.wearMLElements[i].tag) {
+                this.ele = document.getElementById(wearML.wearMLElements[i].id);
+                //console.log(this.ele.tagName);
+
+                if(this.ele.tagName  === "INPUT" | this.ele.tagName  === "TEXTAREA"){
+                   this.ele.focus();
+                   this.ele.click();
+                }else if(this.ele.tagName === "SELECT"){
+                    this.event = document.createEvent('MouseEvents');
+                    this.event.initMouseEvent('mousedown', true, true, window);
+                    this.ele.dispatchEvent(this.event);
+                }else{
+                    this.event = new Event('click');
+                    this.ele.dispatchEvent(this.event);
+                }
+
+            }
+        }
+    };
+    this.btn.style.opacity  = "0.01";
+    this.btn.style.position = "absolute";
+    this.btn.style.width = node.offsetWidth;
+    this.btn.style.height = node.offsetHeight;
+    this.btn.style.zIndex = "-1";
     // Get a reference to the first child
     var theFirstChild = document.body.firstChild;
-   // document.body.appendChild(btn);
-   document.body.insertBefore(btn, theFirstChild);
-}
+    document.body.appendChild(this.btn);
 
+    wearML.wearHFButtons.push(this.btn);
+};
 
 /**
 *  Create xml for web page.
 **/
-function generateXML(){
-  var xml = "<WearML><Package>com.android.webview</Package><Language>en_UK</Language><UniqueIdentifier id=\"web_app\"/> ";
+this.generateXML = function(){
+  this.xml = "<WearML><Package>com.android.webview</Package><Language>en_GB</Language><UniqueIdentifier id=\"web_app\"/> ";
 
-  for (var i = 0, n = wearMLElements.length; i < n; i++)
+   document.title = "hf_no_number";
+
+  for (var i = 0, n = wearML.wearMLElements.length; i < n; i++)
   {
-      var command = wearMLElements[i].tag;
-      var styleId = wearMLElements[i].styleId
-      xml += "<View ";
-      xml += "id=\"" + wearMLElements[i].id + "\" ";
+      this.command = wearML.wearMLElements[i].tag;
+      this.styleId = wearML.wearMLElements[i].styleId
+        //Dont register a command if it can.
+      this.xml += "<View ";
+      this.xml += "id=\"" + wearML.wearMLElements[i].id + "\" ";
 
-      var style = getStyle(styleId)
-
-      if(style != null)
-          xml += wearMLParser(style, wearMLElements[i]);
-
-      if(command != undefined){
-       xml += "speech_command=\""+ command + "\" ";
+      if(this.command != undefined){
+               this.xml += "speech_command=\""+ "no" + "\" ";
       }
 
-      xml += "xy=\"" + wearMLElements[i].x + "," + wearMLElements[i].y + "\"";
+      this.style = this.getStyle(this.styleId)
 
-      xml += "/> ";
+      if(this.style != undefined){
+      			this.xml += this.wearMLParser(this.style, wearML.wearMLElements[i]);
+      }
+
+      this.xml += "/> ";
+
+      // Create node for new button
+      this.xml += "<View ";
+      this.xml += "id=\"" + wearML.wearMLElements[i].tag + "WML_NODE\"";
+
+      this.style = wearML.getStyle(this.styleId)
+      if(this.style != undefined){
+			this.xml += this.wearMLParser(this.style, wearML.wearMLElements[i]);
+      }
+        // DONT Draw overlay for hidden buttons
+      if(this.command != undefined){
+        this.xml += "speech_command=\""+ this.command + "\" ";
+      }
+
+      this.xml += "/> ";
   }
 
-   xml += "</WearML>";
-   return window.btoa(xml);
-}
+   this.xml += "</WearML>";
+   return this.utf8_to_b64(this.xml);
+};
+
+this.utf8_to_b64 = function( str ) {
+    return window.btoa(unescape(encodeURIComponent( str )));
+};
 
 /**
 *   Finding style based on class name and returns style
 **/
-function getStyle(className) {
-    var classes = document.styleSheets[0].rules || document.styleSheets[0].cssRules
-    for(var x=0;x<classes.length;x++) {
-        if(classes[x].selectorText==className) {
-            return classes[x].style;
-        }
-    }
-}
+this.getStyle = function(className) {
+    for(var i = 0; i < document.styleSheets.length; i++){
+            this.classes = document.styleSheets[i].rules || document.styleSheets[i].cssRules
+            if(this.classes != null)
+                for(var x=0;x<this.classes.length;x++) {
+                    if(this.classes[x].selectorText==className) {
+                        return this.classes[x].style;
+                    }
+                }
+     }
+};
 
 /**
 *   Create Random GUID
 **/
-function guid() {
+this.guid = function() {
   function s4() {
     return Math.floor((1 + Math.random()) * 0x10000)
       .toString(16)
@@ -139,43 +333,85 @@ function guid() {
   }
   return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
     s4() + '-' + s4() + s4() + s4();
-}
+};
 
-function getPosition(e) {
-    var isNotFirefox = (navigator.userAgent.toLowerCase().indexOf('firefox') == -1);
-    var x = 0, y = 0;
-    while (e) {
-        x += e.offsetLeft - e.scrollLeft + (isNotFirefox ? e.clientLeft : 0);
-        y += e.offsetTop - e.scrollTop + (isNotFirefox ? e.clientTop : 0);
-        e = e.offsetParent;
+
+this.getPosition = function (el) {
+  this.xPos = 0;
+  this.yPos = 0;
+
+  while (el) {
+    if (el.tagName == "BODY") {
+      // deal with browser quirks with body/window/document and page scroll
+      this.xScroll = el.scrollLeft || document.documentElement.scrollLeft;
+      this.yScroll = el.scrollTop || document.documentElement.scrollTop;
+
+      this.xPos += (el.offsetLeft - this.xScroll + el.clientLeft);
+      this.yPos += (el.offsetTop - this.yScroll + el.clientTop);
+    } else {
+      // for all other non-BODY elements
+      this.xPos += (el.offsetLeft - el.scrollLeft + el.clientLeft);
+      this.yPos += (el.offsetTop - el.scrollTop + el.clientTop);
     }
-    return { x: x + window.scrollX, y: y + window.scrollY };
-}
 
+    el = el.offsetParent;
+  }
+  return {
+    x: this.xPos,
+    y: this.yPos
+  };
+};
 
 /**
 *    Convert String to xml attribute
 **/
-function wearMLParser(e, element) {
+this.wearMLParser = function(e, element) {
 
-   var attributes = "";
+    var attributes = "";
 
-   var get_text_field = e.getPropertyValue(text_field).trim();
-   var get_overlay_show_number = e.getPropertyValue(overlay_show_number).trim();
-   var get_overlay_show_text = e.getPropertyValue(overlay_show_text).trim();
-   var get_overlay_persists = e.getPropertyValue(overlay_persists).trim();
-   var get_overlay_orientation = e.getPropertyValue(overlay_orientation).trim();
-   var get_overlay_background_color = e.getPropertyValue(overlay_background_color).trim();
-   var get_overlay_text_color = e.getPropertyValue(overlay_text_color).trim();
-   var get_overlay_border_color = e.getPropertyValue(overlay_border_color).trim();
-   var get_overlay_anchor_hv = e.getPropertyValue(overlay_anchor_hv).trim();
-   var get_overlay_show_dot = e.getPropertyValue(overlay_show_dot).trim();
-   var get_overlay_show_icon = e.getPropertyValue(overlay_show_icon).trim();
-   var get_overlay_offset = e.getPropertyValue(overlay_offset).trim();
-   var get_hf_scroll = e.getPropertyValue(hf_scroll).trim();
-   var get_barcode = e.getPropertyValue(barcode).trim();
-   var get_global = e.getPropertyValue(global).trim();
-   var get_broadcast_results = e.getPropertyValue(broadcast_results).trim();
+    /**
+    * If we cant find a value and we have a root value use this....
+    */
+   var get_root = e != undefined ? e.getPropertyValue(this.root).trim() : "";
+   var get_text_field = e != undefined ? e.getPropertyValue(this.text_field).trim() : this.root_text_field;
+   var get_overlay_show_number =  e != undefined ? e.getPropertyValue(this.overlay_show_number).trim() : this.root_overlay_show_number;
+   var get_overlay_show_text = e != undefined ? e.getPropertyValue(this.overlay_show_text).trim() : this.root_overlay_show_text;
+   var get_overlay_persists = e != undefined ? e.getPropertyValue(this.overlay_persists).trim() : this.root_overlay_persists;
+   var get_overlay_orientation = e != undefined ? e.getPropertyValue(this.overlay_orientation).trim() : this.root_overlay_orientation;
+   var get_overlay_background_color = e != undefined ? e.getPropertyValue(this.overlay_background_color).trim() : this.root_overlay_background_color;
+   var get_overlay_text_color = e != undefined ? e.getPropertyValue(this.overlay_text_color).trim() : this.root_overlay_text_color;
+   var get_overlay_border_color = e != undefined ? e.getPropertyValue(this.overlay_border_color).trim() : this.root_overlay_border_color;
+   var get_overlay_anchor_hv = e != undefined ? e.getPropertyValue(this.overlay_anchor_hv).trim() : this.root_overlay_anchor_hv;
+   var get_overlay_show_dot = e != undefined ? e.getPropertyValue(this.overlay_show_dot).trim() : this.root_overlay_show_dot;
+   var get_overlay_show_icon = e != undefined ? e.getPropertyValue(this.overlay_show_icon).trim() : this.root_overlay_show_icon;
+   var get_overlay_offset = e != undefined ? e.getPropertyValue(this.overlay_offset).trim() : this.root_overlay_offset;
+   var get_hf_scroll = e != undefined ? e.getPropertyValue(this.hf_scroll).trim() : this.root_hf_scroll;
+   var get_barcode = e != undefined ? e.getPropertyValue(this.barcode).trim() : "";
+   var get_global = e != undefined ? e.getPropertyValue(this.global).trim() : "";
+   var get_hide_help = e != undefined ? e.getPropertyValue(this.hide_help).trim() : "";
+   var get_broadcast_results = e != undefined ? e.getPropertyValue(this.broadcast_results).trim() : "";
+
+   /**
+       Input type
+   ***/
+   if(get_root != ""){
+              if(get_root == "true"){
+                   this.root_text_field = get_text_field;
+                   this.root_overlay_show_number = get_overlay_show_number;
+                   this.root_overlay_show_text = get_overlay_show_text;
+                   this.root_overlay_persists = get_overlay_persists;
+                   this.root_overlay_orientation = get_overlay_orientation;
+                   this.root_overlay_background_color = get_overlay_background_color;
+                   this.root_overlay_text_color = get_overlay_text_color;
+                   this.root_overlay_border_color = get_overlay_border_color;
+                   this.root_overlay_anchor_hv = get_overlay_anchor_hv;
+                   this.root_overlay_show_dot = get_overlay_show_dot;
+                   this.root_overlay_show_icon = get_overlay_show_icon;
+                   this.root_overlay_offset = get_overlay_offset;
+                   this.root_hf_scroll = get_hf_scroll;
+                   this.root_hide_help = get_hide_help;
+              }
+   }
 
    /**
        Input type
@@ -188,18 +424,20 @@ function wearMLParser(e, element) {
         Show Number
     ***/
     if(get_overlay_show_number != ""){
-        if(get_overlay_show_number)
+        if(get_overlay_show_number == "true"){
             attributes += "overlay_show_number=\"yes\" ";
+         }
         else{
             attributes += "overlay_show_number=\"no\" ";
         }
     }
 
+
     /**
         Show Text
     **/
     if(get_overlay_show_text != ""){
-        if(get_overlay_show_text)
+        if(get_overlay_show_text == "true")
             attributes += "overlay_show_text=\"yes\" ";
         else{
             attributes += "overlay_show_text=\"no\" ";
@@ -211,7 +449,7 @@ function wearMLParser(e, element) {
         Show Overlay
     **/
     if(get_overlay_persists != ""){
-        if(get_overlay_persists)
+        if(get_overlay_persists == "true")
             attributes += "overlay_persists=\"yes\" ";
         else{
             attributes += "overlay_persists=\"no\" ";
@@ -259,19 +497,18 @@ function wearMLParser(e, element) {
         Overlay show dot
     **/
    if(get_overlay_show_dot != ""){
-       if(get_overlay_show_dot)
+       if(get_overlay_show_dot == "true")
               attributes += "overlay_show_dot=\"yes\" ";
           else{
               attributes += "overlay_show_dot=\"no\" ";
        }
     }
 
-
     /**
         Overlay show icon
     **/
    if(get_overlay_show_icon != ""){
-       if(get_overlay_show_icon)
+       if(get_overlay_show_icon == "true")
               attributes += "overlay_show_icon=\"yes\" ";
           else{
               attributes += "overlay_show_icon=\"no\" ";
@@ -289,7 +526,7 @@ function wearMLParser(e, element) {
         HF Scroll
     **/
    if(get_hf_scroll != ""){
-       attributes += "hf_scroll="+ get_hf_scroll + " ";
+       attributes += "scroll="+ get_hf_scroll + " ";
     }
 
     /**
@@ -300,11 +537,19 @@ function wearMLParser(e, element) {
 
     }
 
+     /**
+           Hide Help
+    */
+    if(get_hide_help != ""){
+          attributes += "barcode="+ get_barcode + " ";
+
+     }
+
     /**
         Global Commands
     **/
    if(get_global != ""){
-          if(get_global)
+          if(get_global == "true")
                attributes += "global_commands=\"yes\" ";
              else{
                  attributes += "global_commands=\"no\" ";
@@ -315,12 +560,12 @@ function wearMLParser(e, element) {
         BroadCast Commands
     **/
    if(get_broadcast_results != ""){
-          if(get_broadcast_results)
+          if(get_broadcast_results == "true")
                attributes += "broadcast_results=\"yes\" ";
              else{
                  attributes += "broadcast_results=\"no\" ";
           }
     }
     return attributes;
+};
 }
-
